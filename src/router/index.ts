@@ -5,6 +5,8 @@ import BiddingDetail from '../components/BiddingDetail.vue';
 import Fornecedores from '../app/pages/Fornecedores.vue';
 import Relatorios from '../app/pages/Relatorios.vue';
 import DocumentoFormalizacaoDemanda from '../app/pages/DocumentoFormalizacaoDemanda.vue';
+import AutorizacaoPresidente from '../app/pages/AutorizacaoPresidente.vue';
+import AutorizacaoPresidente from '../app/pages/AutorizacaoPresidente.vue';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -15,6 +17,7 @@ export const router = createRouter({
     { path: '/licitacoes/:id', component: BiddingDetail },
     { path: '/licitacoes/:id/editar', component: BiddingForm },
     { path: '/licitacoes/dfd', component: DocumentoFormalizacaoDemanda },
+    { path: '/licitacoes/autorizacao-presidente', component: AutorizacaoPresidente },
     { path: '/fornecedores', component: Fornecedores },
     { path: '/relatorios', component: Relatorios }
   ]

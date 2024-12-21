@@ -2,7 +2,7 @@
   <div class="max-w-4xl mx-auto space-y-6 p-6">
     <div class="text-center mb-8">
       <h1 class="text-2xl font-bold mb-2">DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA</h1>
-      <p class="text-gray-600">CÂMARA MUNICIPAL DE VEREADORES DE CANELINHA</p>
+      <p class="text-gray-600">CÂMARA MUNICIPAL DE VEREADORES</p>
     </div>
 
     <form @submit.prevent="submitForm" class="space-y-6">
@@ -79,37 +79,6 @@
         <!-- 3. Descrições e quantidades -->
         <div class="mb-6">
           <h2 class="text-lg font-semibold mb-2">3. Descrições e quantidades</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
-              <input
-                type="number"
-                v-model.number="form.quantidade"
-                min="1"
-                class="input"
-                @input="e => form.quantidade = Math.max(1, parseInt(e.target.value) || 1)"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Valor Mês</label>
-              <input
-                type="text"
-                :value="formatCurrency(form.valorMes)"
-                @input="formatarValorMes"
-                class="input"
-                placeholder="R$ 0,00"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Valor Total</label>
-              <input
-                type="text"
-                :value="formatCurrency(valorTotalCalculado)"
-                class="input"
-                readonly
-              />
-            </div>
-          </div>
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
               <thead>
@@ -119,14 +88,23 @@
                   <th class="px-4 py-2">Medida</th>
                   <th class="px-4 py-2">Valor Mês</th>
                   <th class="px-4 py-2">Valor Total</th>
+                  <th class="px-4 py-2">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td><input type="text" v-model="form.descricao" class="input" /></td>
-                  <td><input type="number" v-model="form.quantidade" class="input" /></td>
+                <tr v-for="(item, index) in form.items" :key="index">
+                  <td><input type="text" v-model="item.descricao" class="input" /></td>
                   <td>
-                    <select v-model="form.medida" class="input">
+                    <input 
+                      type="number" 
+                      v-model.number="item.quantidade" 
+                      min="1" 
+                      class="input"
+                      @input="e => item.quantidade = Math.max(1, parseInt(e.target.value) || 1)"
+                    />
+                  </td>
+                  <td>
+                    <select v-model="item.medida" class="input">
                       <option value="Mês">Mês</option>
                       <option value="KG">KG</option>
                       <option value="cm">cm</option>
@@ -138,8 +116,8 @@
                   <td>
                     <input 
                       type="text" 
-                      :value="formatCurrency(form.valorMes)"
-                      @input="formatarValorMes"
+                      :value="formatCurrency(item.valorMes)"
+                      @input="(e) => formatarValorMesForItem(e, index)"
                       class="input" 
                       placeholder="R$ 0,00"
                     />
@@ -147,14 +125,30 @@
                   <td>
                     <input 
                       type="text" 
-                      :value="formatCurrency(valorTotalCalculado)"
+                      :value="formatCurrency(calcularValorTotalItem(item))"
                       class="input" 
                       disabled 
                     />
                   </td>
+                  <td>
+                    <button 
+                      type="button" 
+                      @click="removeItem(index)" 
+                      class="text-red-500 hover:text-red-700"
+                    >
+                      Remover
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
+            <button 
+              type="button" 
+              @click="addItem" 
+              class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              Adicionar Item
+            </button>
           </div>
         </div>
 
@@ -387,6 +381,9 @@
 import { ref, computed } from 'vue'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import { useDfdStore } from '../../stores/dfd'
+
+const dfdStore = useDfdStore()
 
 const form = ref({
   dfdNumero: '',
@@ -399,11 +396,14 @@ const form = ref({
   telefone: '',
   objeto: '',
   justificativa: '',
-  descricao: '',
-  quantidade: 1,
-  medida: 'Mês',
-  valorMes: 0,
-  valorTotal: computed(() => form.value.quantidade * form.value.valorMes),
+  items: [
+    {
+      descricao: '',
+      quantidade: 1,
+      medida: 'Mês',
+      valorMes: 0
+    }
+  ],
   prioridade: 'Alto',
   analiseRiscos: 'nao',
   justificativaRiscos: '',
@@ -431,9 +431,8 @@ const form = ref({
 })
 
 const valorTotalCalculado = computed(() => {
-  const quantidade = Number(form.value.quantidade)
-  const valorMes = Number(form.value.valorMes)
-  return quantidade * valorMes
+  const total = form.value.items.reduce((acc, item) => acc + item.quantidade * item.valorMes, 0)
+  return total
 })
 
 const formatCurrency = (value: number): string => {
@@ -453,10 +452,30 @@ const formatarValorMes = (e: Event) => {
   const valorNumerico = Number(value) / 100
   
   // Atualiza o modelo com o valor numérico
-  form.value.valorMes = valorNumerico
+  form.value.estimativaValor = valorNumerico
   
   // Formata para exibição
   input.value = formatCurrency(valorNumerico)
+}
+
+// Função para formatar valor monetário no input para item
+const formatarValorMesForItem = (e: Event, index: number) => {
+  const input = e.target as HTMLInputElement
+  let value = input.value.replace(/\D/g, '')
+  
+  // Converte para número decimal (centavos)
+  const valorNumerico = Number(value) / 100
+  
+  // Atualiza o modelo com o valor numérico
+  form.value.items[index].valorMes = valorNumerico
+  
+  // Formata para exibição
+  input.value = formatCurrency(valorNumerico)
+}
+
+// Função para calcular valor total de um item
+const calcularValorTotalItem = (item: any) => {
+  return item.quantidade * item.valorMes
 }
 
 // Função para formatar estimativa de valor
@@ -534,14 +553,13 @@ const generatePDF = () => {
   y += 8
   
   // Tabela de descrições
-  const descricaoLines = doc.splitTextToSize(form.value.descricao, pageWidth - 2 * margin - 100)
-  const tableData = [[
-    { content: form.value.descricao, styles: { cellWidth: 'auto' } },
-    { content: form.value.quantidade.toString(), styles: { halign: 'center' } },
-    { content: form.value.medida, styles: { halign: 'center' } },
-    { content: formatCurrency(Number(form.value.valorMes)), styles: { halign: 'right' } },
-    { content: formatCurrency(valorTotalCalculado.value), styles: { halign: 'right' } }
-  ]]
+  const tableData = form.value.items.map(item => [
+    { content: item.descricao, styles: { cellWidth: 'auto' } },
+    { content: item.quantidade.toString(), styles: { halign: 'center' } },
+    { content: item.medida, styles: { halign: 'center' } },
+    { content: formatCurrency(Number(item.valorMes)), styles: { halign: 'right' } },
+    { content: formatCurrency(calcularValorTotalItem(item)), styles: { halign: 'right' } }
+  ])
 
   doc.autoTable({
     startY: y,
@@ -685,6 +703,10 @@ const generatePDF = () => {
 }
 
 const submitForm = () => {
+  // Save DFD details to store before generating PDF
+  dfdStore.setDfdDetails(form.value.dfdNumero, form.value.dfdAno)
+  
+  // Existing PDF generation logic
   generatePDF()
 }
 
@@ -699,9 +721,30 @@ const resetForm = () => {
   form.value.prioridade = 'Alto'
   form.value.analiseRiscos = 'nao'
   form.value.previsaoPCA = 'nao'
+  form.value.items = [
+    {
+      descricao: '',
+      quantidade: 1,
+      medida: 'Mês',
+      valorMes: 0
+    }
+  ]
 }
 
 const anos = Array.from({length: 6}, (_, i) => new Date().getFullYear() + i)
+
+const addItem = () => {
+  form.value.items.push({
+    descricao: '',
+    quantidade: 1,
+    medida: 'Mês',
+    valorMes: 0
+  })
+}
+
+const removeItem = (index: number) => {
+  form.value.items.splice(index, 1)
+}
 
 const formatarTelefone = (e: any) => {
   const telefone = e.target.value.replace(/\D/g, '')

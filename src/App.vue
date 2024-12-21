@@ -17,6 +17,9 @@
             <router-link to="/licitacoes/dfd" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
               Documento de Formalização de Demanda
             </router-link>
+            <router-link to="/licitacoes/autorizacao-presidente" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+              Autorização do Presidente
+            </router-link>
             <router-link to="/fornecedores" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
               Fornecedores
             </router-link>
